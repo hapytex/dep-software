@@ -9,20 +9,20 @@ module Dep.Ui.Utils.BinaryEditor (
     BinEd(),bined,bineds,scrollBineds,getBinValue,setBinValue,
     ) where
 
-import Control.Monad((>=>),liftM)
+import Brick.Types(Widget(render))
+
+import Control.Monad((>=>))
 
 import Data.Array.Unboxed(UArray,IArray,elems,listArray,(!),(//),bounds)
 import Data.Bits(Bits(),FiniteBits(finiteBitSize),testBit,(.&.),clearBit,setBit,complementBit,rotateL,rotateR,shiftR)
 import Data.Char(chr)
 
 import Graphics.Vty.Attributes(Attr(..),MaybeDefault(SetTo),Color(ISOColor))
-import Graphics.Vty.Prelude(DisplayRegion)
 import Graphics.Vty.Image(Image,char,imageWidth,imageHeight,emptyImage,(<|>),(<->))
 import Graphics.Vty.Input.Events(Key(..))
-import Graphics.Vty.Widgets.All(Widget(),newWidget,WidgetImpl(..),RenderContext(..),getState,updateWidgetState)
+-- import Graphics.Vty.Widgets.All(Widget(),newWidget,WidgetImpl(..),RenderContext(..),getState,updateWidgetState)
 
-import Dep.Ui.Utils(handleKeyWidget,WidgetKeyHandling(..),KeyContextHandler(..),EdgeWidget(..),EdgeEmit(..),shiftCursorWithPosition)
-import Dep.Ui.Utils.Scrollable(autoScrollable)
+-- import Dep.Ui.Utils(handleKeyWidget,WidgetKeyHandling(..),KeyContextHandler(..),EdgeWidget(..),EdgeEmit(..),shiftCursorWithPosition)
 
 -- | The datastructure that is used by the binary editor internally.
 data BinEd a = (IArray UArray a,Bits a) => BinEd { cursor :: Int, value_ :: a, hex :: Bool } | BinEds { cursor :: Int, line_ :: Int, values_ :: UArray Int a, hex :: Bool }
@@ -40,12 +40,15 @@ values b@BinEd{} = [value_ b]
 values b@BinEds{} = elems $ values_ b
 
 instance Show a => Show (BinEd a) where
-    show (BinEd c v _) = show v++'(':show c++")"
+    show (BinEd c v _) = show v <> '(' : show c <> ")"
     show _ = "multiple registers"
 
+{-
 instance (FiniteBits a,Ord a,Num a,Integral a,Show a,IArray UArray a) => EdgeWidget (BinEd a) where
     renderEdges = showbe
+-}
 
+{-
 instance Bits a => WidgetKeyHandling (BinEd a)
 instance (Num a,FiniteBits a,IArray UArray a) => KeyContextHandler (BinEd a) (BinEd a) where
     handleKeyCtx KRight      [] _ = nxcur
@@ -67,6 +70,7 @@ instance (Num a,FiniteBits a,IArray UArray a) => KeyContextHandler (BinEd a) (Bi
     handleKeyCtx (KChar 'h') _  _ = \x -> Just x { hex = not (hex x) }
     handleKeyCtx (KChar 'H') _  _ = \x -> Just x { hex = not (hex x) }
     handleKeyCtx _           _  _ = const Nothing
+-}
 
 pvlin :: BinEd a -> Maybe (BinEd a)
 pvlin be@BinEds{} = Just $ be { line_ = max 0 $ line_ be-1 }
@@ -145,11 +149,11 @@ gbined :: (IArray UArray a,Show a,Integral a,Ord a,FiniteBits a) => BinEd a -> I
 gbined st =
     newWidget st $ \w ->
         w {
-            growHorizontal_ = const $ return False,
-            growVertical_ = const $ return False,
-            render_ = showber,
-            keyEventHandler = handleKeyWidget,
-            getCursorPosition_ = binGcp
+--            growHorizontal_ = const $ return False,
+--            growVertical_ = const $ return False,
+            render = showber
+--            keyEventHandler = handleKeyWidget,
+--            getCursorPosition_ = binGcp
         }
 
 binGcp :: FiniteBits a => Widget (BinEd a) -> IO (Maybe (Int,Int))
@@ -167,9 +171,7 @@ bineds :: (Show a,Integral a,Ord a,FiniteBits a,IArray UArray a) => [a] -- The g
     -> IO (Widget (BinEd a)) -- ^ The resulting I/O monad returning the constructed widget.
 bineds dat = gbined $ BinEds (finiteBitSize (head dat)-1) 0 (listArray (0,length dat-1) dat) True
 
-scrollBineds dat = do
-    w1 <- bineds dat
-    autoScrollable w1
+scrollBineds = bineds
 
 -- | Obtain the binary value currently hold by the data-structure. In case there are multiple displayed, the one on the cursor line is returned.
 getBinValue :: (Bits a,IArray UArray a) => Widget (BinEd a) -- ^ The binary editor widget from which the value is obtained.

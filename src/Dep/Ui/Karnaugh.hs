@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TupleSections #-}
 
 -- | A module that allows to generate widgets that show (and allow editing of) Karnaugh cards.
 module Dep.Ui.Karnaugh (
@@ -19,24 +18,20 @@ import qualified Data.Text as T
 
 import Debug.Trace
 
+import Graphics.Vty.Attributes(Attr(..))
 import Graphics.Vty.Image
 import Graphics.Vty.Input.Events
-import Graphics.Vty.Prelude
-import Graphics.Vty.Widgets.All
-import Graphics.Vty.Widgets.Events
 
 import Dep.Algorithms()
 import Dep.Printing()
 import Dep.Structures
-import Dep.Ui.Utils(KeyContextHandler(..),swapAttr,Decorator(..),UiDecorator(..),alternate,matrixImg,composeImg,flattenImg,handleKeyWidget,WidgetKeyHandling(..),uiCurX,uiCurY,shiftCursorWithPosition)
-import Dep.Ui.Utils.Boxes(hBoxes,setBoxesSpacing)
-import Dep.Ui.Utils.Scrollable(autoScrollable)
+import Dep.Ui.Utils(KeyContextHandler(..),swapAttr,Decorator(..),UiDecorator(..),alternate,matrixImg,composeImg,flattenImg,WidgetKeyHandling(..),uiCurX,uiCurY)
 import Dep.Utils(selectBool,burst,burstInner,burstItems,concatReplicate,(<&|>),(<&->))
 import Dep.Algorithms.Comb(synthetizeFun)
 
 type Inr a = a -> a
 type Opr a = a -> a -> a
-type Tu2 a = (a,a)
+type Tu2 a = (a, a)
 type Ta2 a = [Tu2 a]
 
 instance KeyContextHandler CombFunc (Decorator CombFunc UiDecorator) where
@@ -108,14 +103,18 @@ innerKgh n0 v = dykghW n0
                         where ls = fn l
                     decap (ThNode la lb) = (fn la,fn lb)
 
-karnaugh1Widget :: CombFunc -> IO (Widget (Decorator CombFunc UiDecorator))
-karnaugh1Widget cf@(CF (CT n _) _) = newWidget (Decorator cf [CursorX 0 (shiftL 1 (div (n+1) 2)-1) 0,CursorY 0 (shiftL 1 (div n 2)-1) 0,Option True (KChar 'c') 0]) $ \x -> x {
-        growHorizontal_ = const $ return False,
-        growVertical_ = const $ return False,
-        render_ = displayKarnaugh,
-        keyEventHandler = handleKeyWidget,
-        getCursorPosition_ = kCurPos
-    }
+karnaugh1Widget :: CombFunc -> Decorator CombFunc UiDecorator
+karnaugh1Widget cf@(CF (CT n _) _) = Decorator cf [CursorX 0 (shiftL 1 (div (n+1) 2)-1) 0,CursorY 0 (shiftL 1 (div n 2)-1) 0,Option True (KChar 'c') 0]
+-- $ \x -> x {
+--        growHorizontal_ = const $ return False,
+--        growVertical_ = const $ return False,
+--        render_ = displayKarnaugh,
+--        keyEventHandler = handleKeyWidget,
+--        getCursorPosition_ = kCurPos
+--    }
+
+karnaugh1Widget' :: Widget n
+karnaugh1Widget' = Widget Fixsed Fixed undefined
 
 kCurPos :: Widget (Decorator CombFunc UiDecorator) -> IO (Maybe (Int,Int))
 kCurPos wg = do

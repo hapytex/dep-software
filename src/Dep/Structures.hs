@@ -1,6 +1,4 @@
---{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -118,7 +116,7 @@ class VarInv a where
 
     -- | The maximum number of variables that are involved over this object.
     maxVars :: a -- ^ The object to analyze.
-            -> Int -- ^ The index of the largest 
+            -> Int -- ^ The index of the largest
     maxVars = last . involvedVar
 
 -- | Specifies an assignable ordering function on the different elements of the datatype. If the two elements are equivalent, the first can definitely be assigned to the second.

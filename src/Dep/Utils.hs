@@ -42,6 +42,7 @@ module Dep.Utils (stick,fixpoint,scanFixpoint,outersperse,matrix,identityMatrix,
         Tabulatable(..),
         Truthfull(..),
         listIndices,
+        nand, nor, xoring, xnoring
     ) where
 
 import Control.Arrow(first,second)
@@ -490,18 +491,17 @@ hashGenerator f i0 li hi = foldl (\hm (x,y) -> HM.insert x (f y x) hm) hi $ zip 
 maybeId :: (a -> Maybe a) -- ^ The given function to call.
     -> a -- ^ The given element.
     -> a -- ^ The resulting element. In case the given function returns a `Just _`, the result is returned, otherwise the original value is returned.
-maybeId f x | Just y <- f x = y
-            | otherwise = x
+maybeId = ap fromMaybe
 
 -- | Turn a function into a variant where the given parameters are `Maybe` as well. In case one of the arguments is `Nothing`, ``Nothing` is returned; otherwise the result of the function application is returned.
-maybenize :: (a -> b -> Maybe c) -- ^ The given function to transform.
-    -> Maybe a -- ^ The first argument to call. If `Nothing`, `Nothing` will be returned.
-    -> Maybe b -- ^ The second argument to call. If `Nothing`, `Nothing` will be returned.
-    -> Maybe c -- ^ The result of the function application.
-maybenize _ Nothing = const Nothing
-maybenize f (Just a) = (>>= f a)
+maybenize :: Monad m => (a -> b -> m c) -- ^ The given function to transform.
+    -> m a -- ^ The first argument to call. If `Nothing`, `Nothing` will be returned.
+    -> m b -- ^ The second argument to call. If `Nothing`, `Nothing` will be returned.
+    -> m c -- ^ The result of the function application.
+maybenize f ma mb = ma >>= \a -> mb >>= f a
+
 varRg :: (a -> b) -> a -> c -> b
-varRg f x _ = f x
+varRg = (const .)
 
 (.*) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.*) g f x = g . f x
@@ -941,3 +941,15 @@ powerl x1 x f n0 | n0 > 0 = pf x n0
                   | n > 1 = f x0 sq
                   | otherwise = x0
               where sq = pf (f x0 x0) (div n 2)
+
+nand :: Foldable f => f Bool -> Bool
+nand = not . and
+
+nor :: Foldable f => f Bool -> Bool
+nor = not . or
+
+xoring :: Foldable f => f Bool -> Bool
+xoring = foldr (/=) False
+
+xnoring :: Foldable f => f Bool -> Bool
+xnoring = not . xoring

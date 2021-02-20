@@ -27,15 +27,12 @@ import Dep.Algorithms.Seq(concatReduceFSM,graySequence)
 import Dep.Algorithms.Cpu(CiscProgram)
 import Dep.Cisc.Parser()
 -- import Dep.Ui(clearAndExit,runMinimizeFsm,runShowKarnaugh,runSynthetize)
+import Dep.Ui(runShowKarnaugh)
 import Dep.Gui.Utils(initDepGui,depWindow)
 import Dep.Gui.Utils.SchematicsViewer(schematicsViewerNew)
 import Dep.Tables.Parser() -- used to import readability of datastructures
 import Dep.Utils(similarity,argmin)
 import Dep.Structures as Str
-
--- TODO: replace with imports
-runShowKarnaugh :: String -> String -> IO ()
-runShowKarnaugh = undefined
 
 runSynthetize :: String -> String -> IO ()
 runSynthetize = undefined

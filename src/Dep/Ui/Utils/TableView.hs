@@ -4,45 +4,34 @@ module Dep.Ui.Utils.TableView (
         textTable,textTable'
     ) where
 
+import Brick.Types(Context, RenderM, Result(Result, image), Size(Fixed), Widget(Widget), attrL, emptyResult, getContext)
+
 import Control.Monad((>=>))
+import Control.Lens((^.))
 
 import Data.IORef(readIORef)
 import Data.List(transpose,map)
 
-import Dep.Ui.Utils(EdgeEmit(..),EdgeWidget(..),linC)
+import Dep.Ui.Utils(EdgeEmit(..), availRegionL, linC)
 import Dep.Utils(mapN,Table(..),powerl)
 
 import Graphics.Vty.Attributes(Attr(..))
-import Graphics.Vty.Prelude(DisplayRegion)
-import Graphics.Vty.Image(Image,string,char,imageWidth,imageHeight,pad,(<|>),(<->),emptyImage)
-import Graphics.Vty.Input.Events(Key(..),Modifier)
-import Graphics.Vty.Widgets.All(Widget(),newWidget,WidgetImpl(..),RenderContext(..),getNormalAttr,getState,updateWidgetState,addToFocusGroup)
-import Graphics.Vty.Widgets.Core(handleKeyEvent,render,getCursorPosition,getCurrentSize,setCurrentPosition,growHorizontal,growVertical,relayFocusEvents,updateWidgetState,(<~~),(<~))
-import Graphics.Vty.Widgets.Box(IndividualPolicy(..),BoxError(..))
-import Graphics.Vty.Widgets.Util(plusWidth,plusHeight,withWidth,withHeight)
+import Graphics.Vty.Image(DisplayRegion, Image, char, emptyImage, imageHeight, imageWidth, pad, string, (<|>), (<->))
 
-textTable' :: [[String]] -> [Int] -> IO (Widget Table)
+textTable' :: [[String]] -> [Int] -> Widget a
 textTable' dt hs = textTable $ Table dt hs [] -- TODO: add vs
 
-textTable :: Table -> IO (Widget Table)
-textTable st =
-    newWidget st $ \w ->
-        w {
-            growHorizontal_ = const $ return False,
-            growVertical_ = const $ return False,
-            render_ = renderTable,
-            keyEventHandler = \_ _ _ -> return False,
-            getCursorPosition_ = const $ return Nothing,
-            setCurrentPosition_ = \_ _ -> return ()
-        }
+textTable :: Table -> Widget a
+textTable st = Widget Fixed Fixed (renderTable st)
 
-renderTable :: Widget Table -> DisplayRegion -> RenderContext -> IO Image
-renderTable w d r = do
-    Table dt hl _ <- getState w -- TODO: take vertical lines into account
-    return $ renderTbl d r ($(mapN 2) (string na) dt) hl
-    where na = normalAttr r
+renderTable :: Table -> RenderM a (Result n)
+renderTable (Table dt hl _) = do  -- TODO: take vertical lines into account
+    ctx <- getContext
+    let na = ctx ^. attrL
+    let d = ctx ^. availRegionL
+    return $ emptyResult { image=renderTbl d ctx ($(mapN 2) (string na) dt) hl }
 
-renderTbl :: DisplayRegion -> RenderContext -> [[Image]] -> [Int] -> Image
+renderTbl :: DisplayRegion -> Context -> [[Image]] -> [Int] -> Image
 renderTbl dr rc ims = rt 0 hhs $ padImages wws hhs ims
     where rt i hs     rs     (j:js) | i == j = hl <-> rt i hs rs js
           rt i (h:hs) (r:rs) js     = rti (vl na h) r <-> rt (i+1) hs rs js
@@ -50,7 +39,7 @@ renderTbl dr rc ims = rt 0 hhs $ padImages wws hhs ims
                     rti br (c:cs) = c <|> br <|> rti br cs
                     rti _  []     = emptyImage
           rt i []     []     _      = emptyImage
-          na = normalAttr rc
+          na = rc ^. attrL
           (wws,hhs) = getImageDimensions ims
           hl = hline na wws
 

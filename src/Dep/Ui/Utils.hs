@@ -5,19 +5,21 @@
 
 -- | A module that contains utility functions to render and built `Widget`s in a more convenient way.
 module Dep.Ui.Utils (
-    isFocused,getCurrentSize,getCurrentWidth,getCurrentHeight,          -- Read properties
-    shiftCursorWithPosition,                                            -- Utility functions for widgets cursor
-    propagateSetCurrentPosition,propagateShiftSetCurrentPosition,       -- Utility functions for widgets position
+--     isFocused,getCurrentSize,getCurrentWidth,getCurrentHeight,          -- Read properties
+--     shiftCursorWithPosition,                                            -- Utility functions for widgets cursor
+--     propagateSetCurrentPosition,propagateShiftSetCurrentPosition,       -- Utility functions for widgets position
+    availRegionL,
     picaH,picaW,flld,linC,                                              -- Special character mappings
     linu,linU,linr,linR,lind,linD,linl,linL,                            -- Box drawing specifiers.
     genReplicate,replicateW,replicateH,vstring,                         -- Replicate characters in directions
     drawFF,drawDff,drawTff,drawSRff,drawJKff,drawFFinpW,                -- Draw flipflops
-    EdgeEmit(..),edgeEmitW,edgeEmitH,EdgeWidget(..),zeroEmit,branchW,branchH,branchWinit,branchHinit,defaultRenderEdges,RenderEmitter,
+    EdgeEmit(..),edgeEmitW,edgeEmitH,zeroEmit,branchW,branchH,branchWinit,branchHinit,RenderEmitter,
+--     EdgeWidget(..), defaultRenderEdges,
     swapAttr,
     KeyContextHandler(..),Decorator(..),UiDecorator(..),WidgetKeyHandling(..),
     imageReplicate,alternate,identity,matrixImg,
     genericFlatImage,flatImg,composeImg,flattenImg,tileImg,
-    handleKeyWidget,
+--     handleKeyWidget,
     uiCurX,uiCurY,uiOpt,
     tapline,taplines,inboxH,lineLabel,vlineILabel,
     mapImg,mapHImg,
@@ -26,6 +28,10 @@ module Dep.Ui.Utils (
     ) where
 
 import Control.Arrow(first,second)
+import Control.Lens(Lens', lens, (^.), (.~), (&))
+import Control.Monad(liftM2)
+
+import Brick.Types(Widget(), Context, availWidthL, availHeightL)
 
 import qualified Data.Array.Unboxed as UA
 import Data.Bits(shiftL,(.&.),(.|.))
@@ -34,6 +40,7 @@ import Data.Function(const,(.))
 import Data.Hashable(Hashable(hashWithSalt))
 import Data.IORef(readIORef)
 import Data.List(map)
+import Data.Maybe(fromMaybe)
 import Data.Word(Word8)
 
 import Dep.Structures(BitTh(..))
@@ -42,26 +49,30 @@ import Dep.Utils(border,replicateFoldl1,fTup,overMN,constN,fastSortByOn,selN,mer
 import Graphics.Vty.Attributes(Attr(..),Color(ISOColor),MaybeDefault(SetTo))
 import Graphics.Vty.Image(DisplayRegion(),Image(),string,char,imageWidth,imageHeight,crop,vertCat,emptyImage,(<|>),(<->))
 import Graphics.Vty.Input.Events(Key(..),Modifier(..))
+{-
 import Graphics.Vty.Widgets.All(Widget(),WidgetImpl(..),getState,RenderContext(..),render,setCurrentPosition,getCurrentPosition)
 import Graphics.Vty.Widgets.Core(updateWidgetState,(<~))
+-}
+
+availRegionL :: Lens' Context DisplayRegion
+availRegionL = lens (liftM2 (,) (^. availWidthL) (^. availHeightL)) (\s (w, h) -> s & availWidthL .~ w & availHeightL .~ h)
 
 -- | Generate an attribute based on the data the wire contains or works on.
 wireAttr :: Hashable a => Attr -- ^ The given normal attribute.
     -> a -- The given data the wire transports.
     -> Attr -- ^ The resulting wire attribute.
-wireAttr (Attr aa _ ac) x = Attr aa (SetTo $ ISOColor $ shiftL 1 $ mod (hashWithSalt 365 x) 3) ac
+wireAttr a@Attr{attrStyle=aa, attrBackColor=ac} x = a {attrForeColor=SetTo $ ISOColor $ shiftL 1 $ mod (hashWithSalt 365 x) 3}
 
 -- | Convert the given attribute into its highlighted equivalent if the given condition is met.
 highlightAttr :: Bool -- ^ The given condition to check for.
     -> Attr -- ^ The given attribute that should be converted into its highlighted equivalent.
     -> Attr -- ^ The resulting attribute that is the highlighted equivalent if the given condition is met. Otherwise the given attribute.
-highlightAttr False x = x
-highlightAttr True (Attr _ (SetTo (ISOColor x)) ac) = Attr (SetTo 32) (SetTo $ ISOColor $ shl x) ac
+highlightAttr True a@Attr{attrForeColor=SetTo (ISOColor x)} = a {attrStyle=SetTo 32, attrForeColor=SetTo $ ISOColor $ shl x}
     where shl 1 = 3
           shl 2 = 6
           shl 4 = 5
           shl y = y
-highlightAttr True x = x
+highlightAttr _ x = x
 
 -- | Generate an attribute based on the data the wire contains or works on and optionally highlight it.
 highlightWireAttr :: Hashable a => Attr
@@ -71,56 +82,56 @@ highlightWireAttr :: Hashable a => Attr
 highlightWireAttr n b = highlightAttr b . wireAttr n
 
 
--- | Determine whether the given `Widget` currently has focus.
-isFocused :: Widget a -- ^ The given Widget to determine whether it has focus.
-    -> IO Bool -- ^ The resulting boolean that is True if the given Widget has focus, False otherwise.
-isFocused = (<~) focused
+-- -- | Determine whether the given `Widget` currently has focus.
+-- isFocused :: Widget a -- ^ The given Widget to determine whether it has focus.
+--      -> IO Bool -- ^ The resulting boolean that is True if the given Widget has focus, False otherwise.
+-- isFocused = (<~) focused
 
--- | Get the current size of the given Widget as a tuple containing the width and height.
-getCurrentSize :: Widget a -- ^ The given Widget to determine its current size.
-    -> IO DisplayRegion -- ^ The resulting tuple that contains the width and the height of the Widget.
-getCurrentSize = (<~) currentSize
+-- -- | Get the current size of the given Widget as a tuple containing the width and height.
+-- getCurrentSize :: Widget a -- ^ The given Widget to determine its current size.
+--     -> IO DisplayRegion -- ^ The resulting tuple that contains the width and the height of the Widget.
+-- getCurrentSize = (<~) currentSize
 
--- | Get the current width of the given Widget as the amount of columns.
-getCurrentWidth :: Widget a -- ^ The given Widget to determine its current width.
-    -> IO Int -- ^ The resulting width of the given Widget in columns.
-getCurrentWidth = (<~)  $ fst . currentSize
+-- -- | Get the current width of the given Widget as the amount of columns.
+-- getCurrentWidth :: Widget a -- ^ The given Widget to determine its current width.
+--     -> IO Int -- ^ The resulting width of the given Widget in columns.
+-- getCurrentWidth = (<~)  $ fst . currentSize
 
--- | Get the current height of the given Widget as the amount of rows.
-getCurrentHeight :: Widget a -- ^ The given Widget to determine its current height.
-    -> IO Int -- ^ The resulting height of the given Widget in rows.
-getCurrentHeight = (<~) $ snd . currentSize
+-- -- | Get the current height of the given Widget as the amount of rows.
+-- getCurrentHeight :: Widget a -- ^ The given Widget to determine its current height.
+--     -> IO Int -- ^ The resulting height of the given Widget in rows.
+-- getCurrentHeight = (<~) $ snd . currentSize
 
--- | Shift the given cursor position by the given position. Since most cursor positions are relative to their `Widget` location, this is a popular utility function.
-shiftCursorWithPosition :: Widget a -- ^ The given `Widget` to determine the position from.
-    -> Maybe DisplayRegion -- ^ The given relative position. Can be `Nothing` if no cursor should be displayed.
-    -> IO (Maybe DisplayRegion) -- ^ An I/O monad that returns the shifted cursor position.
-shiftCursorWithPosition _ Nothing = return Nothing
-shiftCursorWithPosition w (Just (cx,cy)) = do
-    (px,py) <- getCurrentPosition w
-    return $ Just (cx+px,cy+py)
+-- -- | Shift the given cursor position by the given position. Since most cursor positions are relative to their `Widget` location, this is a popular utility function.
+-- shiftCursorWithPosition :: Widget a -- ^ The given `Widget` to determine the position from.
+--     -> Maybe DisplayRegion -- ^ The given relative position. Can be `Nothing` if no cursor should be displayed.
+--     -> IO (Maybe DisplayRegion) -- ^ An I/O monad that returns the shifted cursor position.
+-- shiftCursorWithPosition _ Nothing = return Nothing
+-- shiftCursorWithPosition w (Just (cx,cy)) = do
+--     (px,py) <- getCurrentPosition w
+--     return $ Just (cx+px,cy+py)
 
--- | Propagate the current position unchanged further to a child that is generated by a given function.
-propagateSetCurrentPosition :: (a -> IO (Widget b)) -- ^ The given generator that generates for a given `Widget` state the child it should propagate to.
-    -> Widget a -- ^ The given `Widget` that received the current position and should propagate it.
-    -> DisplayRegion -- ^ The given `DisplayRegion`: the position of the given `Widget`.
-    -> IO () -- ^ Returns nothing, this is a pure I/O function.
-propagateSetCurrentPosition chg wg dr = do
-    st <- getState wg
-    ch <- chg st
-    setCurrentPosition ch dr
+-- -- | Propagate the current position unchanged further to a child that is generated by a given function.
+-- propagateSetCurrentPosition :: (a -> IO (Widget b)) -- ^ The given generator that generates for a given `Widget` state the child it should propagate to.
+--     -> Widget a -- ^ The given `Widget` that received the current position and should propagate it.
+--     -> DisplayRegion -- ^ The given `DisplayRegion`: the position of the given `Widget`.
+--     -> IO () -- ^ Returns nothing, this is a pure I/O function.
+-- propagateSetCurrentPosition chg wg dr = do
+--     st <- getState wg
+--     ch <- chg st
+--     setCurrentPosition ch dr
 
--- | Propagate the current position with a generated shift to its generated child.
-propagateShiftSetCurrentPosition :: (a -> IO DisplayRegion) -- ^ The given generator that generates for a given `Widget` state the shift vector that should be used.
-    -> (a -> IO (Widget b)) -- ^ The given generator that generates for a given `Widget` state the child it should propagate.
-    -> Widget a -- ^ The given `Widget` that received the current position and should propagate it.
-    -> DisplayRegion -- ^ The given `DisplayRegion`: the position of the given `Widget`.
-    -> IO () -- ^ Returns nothing, this is a pure I/O function.
-propagateShiftSetCurrentPosition gn chg wg (cx,cy) = do
-    st <- getState wg
-    (sx,sy) <- gn st
-    ch  <- chg st
-    setCurrentPosition ch (cx+sx,cy+sy)
+-- -- | Propagate the current position with a generated shift to its generated child.
+-- propagateShiftSetCurrentPosition :: (a -> IO DisplayRegion) -- ^ The given generator that generates for a given `Widget` state the shift vector that should be used.
+--     -> (a -> IO (Widget b)) -- ^ The given generator that generates for a given `Widget` state the child it should propagate.
+--     -> Widget a -- ^ The given `Widget` that received the current position and should propagate it.
+--     -> DisplayRegion -- ^ The given `DisplayRegion`: the position of the given `Widget`.
+--     -> IO () -- ^ Returns nothing, this is a pure I/O function.
+-- propagateShiftSetCurrentPosition gn chg wg (cx,cy) = do
+--     st <- getState wg
+--     (sx,sy) <- gn st
+--     ch  <- chg st
+--     setCurrentPosition ch (cx+sx,cy+sy)
 
 -- | A function to draw an arbitrary flipflop with the two (or one and a space) characters determining the input side.
 drawFF :: Char -- ^ The given character to be placed at the top of the flipflop's input side.
@@ -272,16 +283,16 @@ data EdgeEmit = EdgeEmit { emitWidth :: Int, emitHeight :: Int, emitTop :: [Int]
 zeroEmit :: EdgeEmit
 zeroEmit = EdgeEmit 0 0 [] [] [] []
 
-type RenderEmitter a = Widget a -> DisplayRegion -> RenderContext -> IO (Image,EdgeEmit)
+type RenderEmitter a = Widget a -> DisplayRegion -> Attr -> Attr -> IO (Image,EdgeEmit)
 
-defaultRenderEdges :: Show a => RenderEmitter a
-defaultRenderEdges w d r = do
-    img <- render w d r
-    return (img,EdgeEmit (imageWidth img) (imageHeight img) [] [] [] [])
+-- defaultRenderEdges :: Show a => RenderEmitter a
+-- defaultRenderEdges w d r = do
+--     img <- render w d r
+--     return (img,EdgeEmit (imageWidth img) (imageHeight img) [] [] [] [])
 
-class EdgeWidget a where
-    renderEdges :: Show a => RenderEmitter a
-    renderEdges = defaultRenderEdges
+-- class EdgeWidget a where
+--     renderEdges :: Show a => RenderEmitter a
+--     renderEdges = defaultRenderEdges
 
 edgeEmitW :: Int -> EdgeEmit -> EdgeEmit -> EdgeEmit
 edgeEmitW dw (EdgeEmit wa ha ta _ ba la) (EdgeEmit wb hb tb rb bb _) = EdgeEmit (dww+wb) (max ha hb) (cnc ta tb) rb (cnc ba bb) la
@@ -476,7 +487,7 @@ instance KeyContextHandler Bool a where
 -- | A function that swaps the foreground and the background of the given attribute.
 swapAttr :: Attr -- ^ The given attribute to process.
     -> Attr -- ^ The resulting attribute that is a copy of the given attribute except that the foreground and background are swapped.
-swapAttr (Attr s fg bg) = Attr s bg fg
+swapAttr a@Attr{attrForeColor=fg, attrBackColor=bg} = a {attrForeColor=bg, attrBackColor=fg}
 
 highlightColor :: Int -> Int
 highlightColor 1 = 3
@@ -492,10 +503,9 @@ vstring a = vertCat . map (char a)
 
 class KeyContextHandler a ctx where
     handleKeyCtx :: Key -> [Modifier] -> ctx -> a -> Maybe a
-    handleKeyCtx k m c x = Just $ handleKeyCtxId k m c x
+    handleKeyCtx k m c x = Just (handleKeyCtxId k m c x)
     handleKeyCtxId :: Key -> [Modifier] -> ctx -> a -> a
-    handleKeyCtxId k m c x | Just f <- handleKeyCtx k m c x = f
-                           | otherwise = x
+    handleKeyCtxId k m c x = fromMaybe x (handleKeyCtx k m c x)
 
 class WidgetKeyHandling a where
     handleKeyWidgetFallfront :: Widget a -> Key -> [Modifier] -> IO Bool
@@ -505,15 +515,15 @@ class WidgetKeyHandling a where
 
 instance WidgetKeyHandling (Decorator a b)
 
-handleKeyWidget :: (WidgetKeyHandling a,KeyContextHandler a a) => Widget a -> Key -> [Modifier] -> IO Bool
-handleKeyWidget x y z = do
-        ff <- handleKeyWidgetFallfront x y z
-        if ff then return True else do
-            s <- getState x
-            r <- readIORef x
-            f (focused r) (handleKeyCtx y z s s)
-                where f True (Just l) = updateWidgetState x (const l) >> return True
-                      f _    _        = handleKeyWidgetFallback x y z
+-- handleKeyWidget :: (WidgetKeyHandling a,KeyContextHandler a a) => Widget a -> Key -> [Modifier] -> IO Bool
+-- handleKeyWidget x y z = do
+--         ff <- handleKeyWidgetFallfront x y z
+--         if ff then return True else do
+--             s <- getState x
+--             r <- readIORef x
+--             f (focused r) (handleKeyCtx y z s s)
+--                 where f True (Just l) = updateWidgetState x (const l) >> return True
+--                       f _    _        = handleKeyWidgetFallback x y z
 
 bCursorX :: Int -> Int -> Int -> UiDecorator
 bCursorX mn mx = CursorX mn mx . border mn mx
@@ -603,7 +613,7 @@ vlineILabel :: Attr -> Int -> [(Int,String,Attr)] -> Image
 vlineILabel a0 w = vlil 0
     where vlil i ((j,s,a):ls) = string a0 (replicate (j-i) ' ') <|> vstring a s <|> vlil (j+1) ls
           vlil i [] = string a0 $ replicate (w-i) ' '
-     
+
 
 tapline :: Attr -> Attr -> Int -> [Int] -> [WireC] -> Image
 tapline ad at n = t0 0
@@ -630,7 +640,7 @@ inboxH imgr a l = ih' l 0
                     rec =  ih' xss
                     tl d0 d1 bb = $(fTup 2) ($(overMN 2 2) imgr bb) (mi (w+d0):) $ rec (w+d1)
                     mi w0 = zip xs [w0..]
-          ih' [] _ = ($(constN 2) $ emptyImage,[])
+          ih' [] _ = ($(constN 2) emptyImage,[])
 
 mapImg :: (Int -> Image) -> (Image -> Image -> Image) -> (a -> Image) -> [(a,Int)] -> Image
 mapImg spg mgr gen lst = mi lst 0
@@ -644,8 +654,8 @@ calcRout xs = fr [] (fastSortByOn (negate . minimum . fst) xs) [] []
           bvz = zeros $ bvs+length xs
           fr :: [WireC] -> [WireR] -> [(Int,BV,BV,[WireR])] -> [WireR] -> ([WireC],[[WireR]],[WireC])
                                                  -- TODO: resolve failures
-          fr cts ((lb@(l@(x:ys),la)):rs) rti fld | sp0 == sp1 = fr ((x,la):cts) rs rti fld
-                                                 | otherwise = uncurry (fr cts rs) safinj
+          fr cts (lb@(l@(x:ys),la):rs) rti fld | sp0 == sp1 = fr ((x,la):cts) rs rti fld
+                                               | otherwise = uncurry (fr cts rs) safinj
               where sp0 = minimum l
                     sp1 = maximum l
                     iinj = shiftL (1 :: Integer)
@@ -666,14 +676,14 @@ calcRout xs = fr [] (fastSortByOn (negate . minimum . fst) xs) [] []
                                                 | otherwise = Nothing
                         where tl = rtinj ts
                     rtinj [] = Just [(sp0,musk,mask,[lb])]
-          fixinj ((lb@(l@(x:ys),la)):rs) heap stack = fixinj rs heap stack --TODO: add failing lines to stack and heap
-          fixinj []                      heap stack = stack++heap
+          fixinj (lb@(l@(x:ys),la):rs) heap stack = fixinj rs heap stack --TODO: add failing lines to stack and heap
+          fixinj []                    heap stack = stack++heap
           fixinj ((    []      ,_)  :_)  _    _ = error "All wires should have at least one input and one output pin."
 
 routImg :: Attr -> Int -> ([WireC],[[WireR]],[WireC]) -> Image
 routImg atr w (x1,x2,x3) = ri x1 x2 x3
     where ri :: [WireC] -> [[WireR]] -> [WireC] -> Image
-          ri d (l:ls) du = imm <-> ri (mergeOrdOn fst d $ concatMap (\(lin,ain) -> map (\x -> (x,ain)) $ tail lin) l) ls dum
+          ri d (l:ls) du = imm <-> ri (mergeOrdOn fst d $ concatMap (\(lin,ain) -> map (,ain) $ tail lin) l) ls dum
               where (dum,imm) = ril (mergeOrdOn fst d du) du 0 l
           ri _ [] _ = emptyImage
           ril :: [WireC] -> [WireC] -> Int -> [WireR] -> ([WireC],Image)

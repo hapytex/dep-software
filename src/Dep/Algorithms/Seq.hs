@@ -75,7 +75,7 @@ reduceFSM :: (Hashable st,Eq st, Eq ot) => FSM st it ot -> FSM [st] it ot
 reduceFSM (Moore ss is dt f) = Moore rs is (\x y -> pm $ dt (head x) y) $ f.head
     where rs = calcRedStates is dt (reduce1Moore ss f)
           pm = Label . flip (HM.lookupDefault []) (hashItemLists rs HM.empty) . stateLabel
-reduceFSM (Mealy ss is dt f) = Mealy rs is (\x y -> pm $ dt (head x) y) (\x y -> f (head x) y)
+reduceFSM (Mealy ss is dt f) = Mealy rs is (\x y -> pm $ dt (head x) y) (f . head)
     where rs = calcRedStates is dt (reduce1Mealy ss is f)
           pm = Label . flip (HM.lookupDefault []) (hashItemLists rs HM.empty) . stateLabel
 

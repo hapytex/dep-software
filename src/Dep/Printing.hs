@@ -81,7 +81,7 @@ tableHtml5 title dat = htmlDocument title $
     Ht.table $ forM_ dat (\row ->
         Ht.tr $ forM_ row $ Ht.td . Ht.code . Ht.text . pack
     )
-    
+
 
 tableLaTeX :: [[String]] -> String
 tableLaTeX dt = "\\begin{tabular}{"++replicate (length $ head dt) 'c'++"}"++intercalate "\\\\" (map (intercalate "&" . map encodeLaTeX) dt)++"\\end{tabular}"
@@ -218,13 +218,13 @@ printExtendedKK p fn xns n l = fn : (stem ++ zipWith (++) lm tbl)
 
 printCompactKK' :: (a -> Char) -> Int -> Three a -> [String]
 printCompactKK' p n (ThLeaf l) | n == 0 = [[p l]]
-                               | n `mod` 2 == 0 = pl++reverse pl
+                               | even n = pl++reverse pl
                                | otherwise = map (\x -> x++reverse x) pl
                                where pl = printCompactKK' p (n-1) (ThLeaf l)
-printCompactKK' p n (ThDirect la) | n `mod` 2 == 0 = pl++reverse pl
+printCompactKK' p n (ThDirect la) | even n  = pl++reverse pl
                                   | otherwise = map (\x -> x++reverse x) pl
                                   where pl = printCompactKK' p (n-1) la
-printCompactKK' p n (ThNode la lb) | n `mod` 2 == 0 = pla++reverse plb
+printCompactKK' p n (ThNode la lb) | even n = pla++reverse plb
                                    | otherwise = zipWith (\x y -> x++reverse y) pla plb
                                    where pla = printCompactKK' p n1 la
                                          plb = printCompactKK' p n1 lb

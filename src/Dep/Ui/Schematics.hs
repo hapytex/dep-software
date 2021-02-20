@@ -35,7 +35,6 @@ import Dep.Algorithms(calcSop)
 import Dep.Printing
 import Dep.Structures
 import Dep.Ui.Utils(KeyContextHandler(..),handleKeyWidget,swapAttr,Decorator(..),UiDecorator(..),imageReplicate,WidgetKeyHandling(..),taplines,inboxH,mapHImg,calcRoutImg,lineLabel,vlineILabel,linC,shiftCursorWithPosition,wireAttr,highlightWireAttr)
-import Dep.Ui.Utils.Scrollable(autoScrollable,ScrollSt())
 import Dep.Utils(replicateFoldl1,ordNub,hashItemIndex,mapN,hashGenerator,withf)
 import Dep.Utils.IORefFun(IORefFun(),readReference)
 
@@ -143,16 +142,14 @@ xused = ordNub . sort . concatMap (map abs)
 
 -- | Construct a `Widget` that renders the given list of combinatorial elements by using an AND array and OR array.
 sopWidget :: IORefFun inr [CombElem] -- ^ The given reference to a list of combinatorial elements.
-    -> IO (Widget (ScrollSt (Schmtc inr [CombElem]))) -- ^ The returning widget that renders the combinatorial elements as a SOP and does this inside an automatic scroll element.
-sopWidget c = do
-    wid <- newWidget (Schmtc 0 0 c) $ \x -> x {
+    -> IO (Widget (Schmtc inr [CombElem])) -- ^ The returning widget that renders the combinatorial elements as a SOP and does this inside an automatic scroll element.
+sopWidget c = newWidget c $ \x -> x {
         growHorizontal_ = const $ return False,
         growVertical_ = const $ return False,
         render_ = displaySop,
         keyEventHandler = handleKeyWidget,
         getCursorPosition_ = schmGcp
     }
-    autoScrollable wid
 
 -- | A Widget that diesplays the given schematics and allows the user to edit the schematics accordingly.
 schematicsWidget :: [Int] -- ^ The given schematics that must be rendered.

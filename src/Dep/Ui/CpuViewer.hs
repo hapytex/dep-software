@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TupleSections #-}
 
 -- | A module that allows to generate widgets that show (and allow editing of) the CPU state.
 module Dep.Ui.CpuViewer (
@@ -28,9 +27,8 @@ import Dep.Algorithms()
 import Dep.Printing()
 import Dep.Structures
 import Dep.Ui.Utils(KeyContextHandler(..),swapAttr,Decorator(..),UiDecorator(..),alternate,matrixImg,composeImg,flattenImg,handleKeyWidget,WidgetKeyHandling(..),uiCurX,uiCurY,shiftCursorWithPosition)
-import Dep.Ui.Utils.Border(border,edgeBorder)
+-- import Dep.Ui.Utils.Border(border,edgeBorder)
 import Dep.Ui.Utils.Boxes(hBoxes,setBoxesSpacing)
-import Dep.Ui.Utils.Scrollable(autoScrollable)
 import Dep.Ui.Utils.BinaryEditor(bined,bineds,scrollBineds)
 
 import Dep.Utils(selectBool,burst,burstInner,burstItems,concatReplicate,(<&|>),(<&->))

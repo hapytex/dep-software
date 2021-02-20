@@ -27,7 +27,7 @@ import Graphics.Vty.Widgets.Events
 import Dep.Algorithms.Sim(CircuitBuilder,startSimulation,horizon,getNamedWires)
 import Dep.Structures
 import Dep.Ui.Utils(KeyContextHandler(..),swapAttr,Decorator(..),UiDecorator(..),handleKeyWidget,linC,WidgetKeyHandling(..))
-import Dep.Ui.Utils.Scrollable(autoScrollable,alwaysScrollable)
+-- import Dep.Ui.Utils.Scrollable(autoScrollable,alwaysScrollable)
 import Dep.Utils(selectBool,selN,spread0h,steps0)
 
 import System.Exit(exitSuccess)
